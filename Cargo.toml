@@ -1,0 +1,25 @@
+[package]
+name = "gdrive_upload_tool"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+aes-gcm = "0.10"
+pbkdf2 = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.108" # Corrected: Specific recent version, removed "json" feature
+reqwest = { version = "0.12", features = ["json"] } 
+tokio = { version = "1", features = ["full"] }
+google-drive3 = "5.0.4" # Or latest
+yup-oauth2 = { version = "9.0.0", features = ["hyper-rustls"] } # Or latest
+hyper = { version = "0.14", features = ["full"] }
+hyper-rustls = "0.26.0" # Or latest compatible
+clap = { version = "4.4.8", features = ["derive"] } # Or latest
+regex = "1.10.5"
+rpassword = "7.4.0" # Or the version your system provides / the one that works
+mime_guess = "2.0.4"
+urlencoding = "2.1.3" 
+colored = "2.1.0"     
+indicatif = "0.17.8"
