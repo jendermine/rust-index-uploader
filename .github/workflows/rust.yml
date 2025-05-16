@@ -17,9 +17,9 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    # Set up Rust toolchain
+    # Set up Rust toolchain with updated action version
     - name: Set up Rust
-      uses: actions/setup-rust@v1
+      uses: actions/setup-rust@v2
       with:
         rust-version: stable
 
