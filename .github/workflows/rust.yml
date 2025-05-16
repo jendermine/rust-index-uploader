@@ -1,0 +1,109 @@
+name: Rust CI
+
+on:
+  push:
+    branches:
+      - main  # Trigger on push to the main branch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-gnu, aarch64-linux-android] # Matrix of targets
+
+    steps:
+    # Checkout the repository code
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    # Set up Rust toolchain
+    - name: Set up Rust
+      uses: actions/setup-rust@v1
+      with:
+        rust-version: stable
+
+    # Install dependencies for cross-compilation
+    - name: Install dependencies for cross-compilation
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y mingw-w64  # For Windows cross-compilation
+        sudo apt-get install -y wget unzip  # For Android cross-compilation
+
+    # Install Android NDK for Termux aarch64 cross-compilation
+    - name: Install Android NDK
+      if: matrix.target == 'aarch64-linux-android'
+      run: |
+        wget https://dl.google.com/android/repository/android-ndk-r21e-linux-x86_64.zip
+        unzip android-ndk-r21e-linux-x86_64.zip
+        sudo mv android-ndk-r21e /opt/
+        echo "ANDROID_NDK_HOME=/opt/android-ndk-r21e" >> $GITHUB_ENV
+
+    # Cache Cargo registry to speed up builds
+    - name: Cache Cargo registry
+      uses: actions/cache@v2
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-registry-
+
+    # Cache Cargo build to speed up builds
+    - name: Cache Cargo build
+      uses: actions/cache@v2
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-target-${{ hashFiles('**/Cargo.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-target-
+
+    # Build the project for the target
+    - name: Build for ${{ matrix.target }}
+      run: |
+        cargo build --release --target ${{ matrix.target }}
+
+    # Archive the compiled binaries as artifacts
+    - name: Archive Binaries
+      run: |
+        mkdir artifacts
+        cp target/${{ matrix.target }}/release/myapp artifacts/  # Replace `myapp` with your app's name
+        tar -czvf artifacts.tar.gz artifacts
+
+    # Create a new GitHub release
+    - name: Create Release
+      id: create_release
+      uses: gh-actions/create-release@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        tag_name: v${{ github.run_number }}
+        release_name: "Release v${{ github.run_number }}"
+        body: "Release v${{ github.run_number }} of my Rust project"
+        draft: false
+        prerelease: false
+
+    # Upload binaries to the release
+    - name: Upload Linux Binary to Release
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: target/${{ matrix.target }}/release/penguindex  # Replace `myapp` with the actual binary name
+        asset_name: penguindex-linux-x86_64  # Customize for the platform
+        asset_content_type: application/octet-stream
+
+    - name: Upload Windows Binary to Release
+      if: matrix.target == 'x86_64-pc-windows-gnu'
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: target/${{ matrix.target }}/release/penguindex.exe  # Windows binary path
+        asset_name: penguindex-windows-x86_64.exe  # Customize for the platform
+        asset_content_type: application/octet-stream
+
+    - name: Upload Termux (aarch64) Binary to Release
+      if: matrix.target == 'aarch64-linux-android'
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: target/${{ matrix.target }}/release/penguindex  # Termux binary path
+        asset_name: penguindex-termux-aarch64  # Customize for Termux
+        asset_content_type: application/octet-stream
